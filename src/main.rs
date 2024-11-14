@@ -1,57 +1,75 @@
+//! Simple winit application.
+use winit::raw_window_handle::{HasDisplayHandle, WaylandDisplayHandle};
+use winit::event_loop::EventLoop;
 use std::error::Error;
-use pixels::{ Pixels, SurfaceTexture};
-use winit::{
-    event::{Event, WindowEvent},
-    event_loop::{ControlFlow, EventLoop},
-    platform::run_return::EventLoopExtRunReturn,
-    window::WindowBuilder,
-};
+use winit::application::ApplicationHandler;
+use winit::event::WindowEvent;
+use winit::event_loop::ActiveEventLoop;
+use winit::window::{Window, WindowId};
+use winit::event_loop::ControlFlow;
 
-fn main() -> Result<(), Box<dyn Error>> {
-    // Create an event loop
-    let event_loop = EventLoop::new();
-
-    // Create a window
-    let window = WindowBuilder::new()
-        .with_title("Color Screen")
-        .with_inner_size(winit::dpi::LogicalSize::new(800, 600))
-        .build(&event_loop)?;
-
-    // Create a pixel buffer
-    let width = window.inner_size().width;
-    let height = window.inner_size().height;
-    let surface_texture = SurfaceTexture::new(width, height, &window);
-    let mut pixels = Pixels::new(width, height, surface_texture)?;
-
-    // Set the color you want (RGBA format)
-    let color = [0, 128, 255, 255]; // A nice shade of blue
-
-    // Fill the pixel buffer with the chosen color
-    let frame = pixels.get_frame();
-    for pixel in frame.chunks_exact_mut(4) {
-        pixel.copy_from_slice(&color);
+#[derive(Default)]
+struct App {
+    window: Option<Window>,
+}
+impl ApplicationHandler for App {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        self.window = Some(event_loop.create_window(Window::default_attributes()).unwrap());
     }
 
-    // Event loop to handle window events
-    event_loop.run_return(|event, _, control_flow| {
-        *control_flow = ControlFlow::Wait;
-
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
         match event {
-            Event::WindowEvent {
-                event: WindowEvent::CloseRequested,
-                ..
-            } => {
-                *control_flow = ControlFlow::Exit;
-            }
-            Event::RedrawRequested(_) => {
-                // Render the pixel buffer
-                if pixels.render().is_err() {
-                    *control_flow = ControlFlow::Exit;
-                }
-            }
-            _ => {}
-        }
-    });
+            WindowEvent::CloseRequested => {
+                println!("The close button was pressed; stopping");
+                event_loop.exit();
+            },
+            WindowEvent::RedrawRequested => {
+                // Redraw the application.
+                //
+                // It's preferable for applications that do not render continuously to render in
+                // this event rather than in AboutToWait, since rendering in here allows
+                // the program to gracefully handle redraws requested by the OS.
 
+                // Draw.
+		if let Some(rd_window) = self.window.as_ref(){
+		    if let Ok(h) = rd_window.display_handle(){
+			let rh = h.as_raw();
+			match rh {
+			    winit::raw_window_handle::RawDisplayHandle::Wayland(WaylandDisplayHandle{display: wh, ..}) => {
+				let t = wh.as_ref();
+				
+			    },
+			    _ => panic!("Not implemented"),
+			}
+		    }
+		}
+		    
+                // Queue a RedrawRequested event.
+                //
+                // You only need to call this if you've determined that you need to redraw in
+                // applications which do not always need to. Applications that redraw continuously
+                // can render here instead.
+                self.window.as_ref().unwrap().request_redraw();
+            }
+            _ => (),
+        }
+    }
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let event_loop = EventLoop::new().unwrap();
+    // ControlFlow::Poll continuously runs the event loop, even if the OS hasn't
+    // dispatched any events. This is ideal for games and similar applications.
+    // event_loop.set_control_flow(ControlFlow::Poll);
+
+    // ControlFlow::Wait pauses the event loop if no events are available to process.
+    // This is ideal for non-game applications that only update in response to user
+    // input, and uses significantly less power/CPU time than ControlFlow::Poll.
+    event_loop.set_control_flow(ControlFlow::Wait);
+
+    // event_loop.set_control_flow(ControlFlow::WaitUntil();
+
+    let mut app = App::default();
+    event_loop.run_app(&mut app)?;
     Ok(())
 }
