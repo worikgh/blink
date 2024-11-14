@@ -4,4 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+softbuffer = {version = "0.4.6", features = ["wayland"] }
 winit = { version = "0.30", features = ["wayland"] }
