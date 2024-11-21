@@ -11,14 +11,19 @@ mod winit_app;
 
 fn main() {
     let mut args = env::args();
-    let (r, g, b) = if args.len() == 4 {
+    let (r, g, b, d) = if args.len() > 3 {
 	_ = args.next(); // Programme name
 	let r = args.next().unwrap().parse::<u8>().expect("Red");
 	let g = args.next().unwrap().parse::<u8>().expect("Green");
 	let b = args.next().unwrap().parse::<u8>().expect("Blue");
-	(r, g, b)
+	let d = if args.len() > 0 {
+	    args.next().unwrap().parse::<u64>().expect("Delay ms")
+	}else{
+	    50
+	};
+	(r, g, b, d)
     }else{
-	(0, 0, 0)
+	(0, 0, 0, 50)
     };
     let event_loop = EventLoop::new().unwrap();
     let mut app = winit_app::WinitAppBuilder::with_init(|elwt: &ActiveEventLoop| {
@@ -64,7 +69,7 @@ fn main() {
                 buffer.present().unwrap();
             }
             Event::AboutToWait => {
-		thread::sleep(Duration::from_millis(50));
+		thread::sleep(Duration::from_millis(d));
                 elwt.exit();
             }
             x => {
