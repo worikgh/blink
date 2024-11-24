@@ -72,9 +72,7 @@ fn main() {
 		thread::sleep(Duration::from_millis(d));
                 elwt.exit();
             }
-            x => {
-                eprintln!("DBG Event: {x:?}");
-            }
+            _ => ()
         }
     });
 
